@@ -43,19 +43,27 @@ claude mcp list   # 应该能看到 rag
 
 **方案 A：mDNS 广播（推荐，零客户端配置）**
 
-在**服务机器**（跑 `make up` 的那台）上执行：
+在**服务机器**（跑 `make up` 的那台）上跑 publisher。任选一个：
 
 ```bash
-./tools/mdns-publish.sh         # 前台运行，Ctrl+C 退出
+# macOS / Linux — shell 版（自带 dns-sd / avahi-publish）
+./tools/mdns-publish.sh
+
+# 跨平台（含 Windows）— Python 版
+pip install zeroconf
+python tools/mdns_publish.py
 ```
+
+**Windows 上只能用 Python 版**（没有原生 `dns-sd`/`avahi-publish`）。两个脚本行为等价。
 
 广播跑起来后，同局域网的任何 macOS / iOS / Linux + Avahi / Windows + Bonjour 设备都能直接 `ping rag.local` / `curl http://rag.local:3000`，不用改任何东西。
 
-要让它一直在后台跑，可以：
+要让它一直在后台跑：
 
 - **macOS** 用 launchd 包装（创建 `~/Library/LaunchAgents/com.rag.mdns.plist`）
 - **Linux** 用 systemd service 包装
-- 或者直接 `nohup ./tools/mdns-publish.sh > /tmp/rag-mdns.log 2>&1 &`
+- **Windows** 用任务计划程序，触发器选"登录时"，操作选 `python tools\mdns_publish.py`
+- 临时后台：`nohup ./tools/mdns-publish.sh > /tmp/rag-mdns.log 2>&1 &`（macOS/Linux）
 
 **方案 B：hosts 文件（最通用，每台客户端改一次）**
 

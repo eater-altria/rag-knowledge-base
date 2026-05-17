@@ -239,13 +239,24 @@ make push-images   # 同上，但 push 到 registry
 
 #### 方案 A：mDNS 广播（推荐）
 
-在**服务机器**（跑 `make up` 那台）上运行：
+在**服务机器**（跑 `make up` 那台）上运行 publisher。**任选一个**：
+
+**Shell 版（macOS / Linux）**
 
 ```bash
 ./tools/mdns-publish.sh         # 前台运行；Ctrl+C 退出
 ```
 
-脚本自动 detect 本机局域网 IP，把 `rag.local` 广播到 LAN。同局域网内任何支持 mDNS 的设备（macOS / iOS 原生、Linux 装了 Avahi、Windows 装了 Bonjour）直接能 ping `rag.local`、curl `rag.local:3000`，**不需要在客户端做任何配置**。
+依赖系统自带 `dns-sd`（macOS）或 `avahi-publish`（Linux 装 `avahi-utils`）。
+
+**Python 版（macOS / Linux / Windows，跨平台）**
+
+```bash
+pip install zeroconf            # 一次性
+python tools/mdns_publish.py    # 前台运行；Ctrl+C 退出
+```
+
+Windows 上**只能用这个**（没有原生 `dns-sd`/`avahi-publish`）。也是给跨平台团队的统一选项。两个脚本行为等价、自动 detect 本机局域网 IP，把 `rag.local` 广播到 LAN。同局域网内任何支持 mDNS 的设备（macOS / iOS 原生、Linux 装了 Avahi、Windows 装了 Bonjour）直接能 ping `rag.local`、curl `rag.local:3000`，**不需要在客户端做任何配置**。
 
 **让它一直在后台跑**
 
@@ -312,12 +323,15 @@ nohup ./tools/mdns-publish.sh > /tmp/rag-mdns.log 2>&1 &
 
 #### 平台兼容矩阵
 
-| 平台 | 跑 publisher | 作为客户端解析 `rag.local` |
-|------|------------|------------------------|
-| macOS | ✓（dns-sd 自带） | ✓（原生 mDNS） |
-| Linux + Avahi | ✓（`sudo apt install avahi-utils`） | ✓（原生 mDNS） |
-| Windows | ✗（建议不在 Windows 跑 publisher） | 需装 [Bonjour Print Services](https://support.apple.com/kb/dl999)；不装就走方案 B |
-| iOS / Android | — | iOS 原生支持；Android 部分版本要 app 支持 |
+| 平台 | Shell publisher | Python publisher | 作为客户端解析 `rag.local` |
+|------|---------------|-----------------|------------------------|
+| macOS | ✓（dns-sd 自带） | ✓ | ✓（原生 mDNS） |
+| Linux + Avahi | ✓（`sudo apt install avahi-utils`） | ✓ | ✓（原生 mDNS） |
+| **Windows** | ✗ | ✓（`pip install zeroconf`） | 需装 [Bonjour Print Services](https://support.apple.com/kb/dl999)；不装就走方案 B |
+| WSL2（Windows 上） | ✓（在 Linux 子系统里） | ✓ | 见下方说明 |
+| iOS / Android | — | — | iOS 原生支持；Android 部分版本要 app 支持 |
+
+> **Windows 上想用 Shell 版？** 进 WSL2 跑 — 但默认 NAT 网络下 WSL 里的 publisher 广播的是 WSL 子网 IP（172.x.x.x），局域网设备得到的地址不可达。Windows 11 + WSL 2.0+ 可以在 `%UserProfile%\.wslconfig` 里设 `[wsl2]\nnetworkingMode=mirrored` 解决（WSL 跟 Windows 共享网络命名空间）。**更简单的方案是直接在 Windows 上跑 Python publisher**。
 
 ---
 
@@ -350,8 +364,11 @@ curl http://rag.local:3000/api/health       # {"ok":true,...}
 | 现象 | 原因 / 处理 |
 |------|------|
 | `ping: cannot resolve rag.local` | mDNS 没起来。看 `/tmp/rag-mdns.log`；或服务机器没跑 publisher；或客户端不支持 mDNS（→ 用方案 B）|
-| Linux 上 `avahi-publish: command not found` | `sudo apt install avahi-utils && sudo systemctl enable --now avahi-daemon` |
+| Linux 上 `avahi-publish: command not found` | `sudo apt install avahi-utils && sudo systemctl enable --now avahi-daemon`；或者改用 Python 版（`pip install zeroconf`）|
+| Python 版报 `No module named 'zeroconf'` | `pip install zeroconf`（或 `pip3` / `python -m pip install zeroconf`，看本机 Python 装在哪）|
+| Windows 上 publisher 跑不起来 | 用 Python 版（`python tools/mdns_publish.py`）；不要用 Shell 版 |
 | Windows 上 `ping rag.local` 失败 | 装 Bonjour Print Services；或在 `hosts` 文件加一行（方案 B）|
+| WSL2 里跑 publisher，局域网设备 ping 通了但访问的是 WSL 内部 IP | WSL2 默认 NAT 网络问题。Windows 11 + WSL 2.0+ 在 `.wslconfig` 加 `[wsl2]\nnetworkingMode=mirrored` 后重启 WSL；或者直接在 Windows 上跑 Python 版 |
 | `ping` 通但 `curl` 超时 | RAG 服务没启动 / 端口不通；查 `docker compose ps`、防火墙 |
 | 跨网段（不同 VLAN / VPN）失败 | mDNS 设计上不跨网段；必须用方案 B 或方案 C（内网 DNS）|
 | IP 变了 publisher 没更新 | 脚本在启动时 detect IP。换网后 `launchctl unload && load` 或 `systemctl restart rag-mdns` 重启 publisher |
