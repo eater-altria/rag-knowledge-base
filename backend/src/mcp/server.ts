@@ -65,7 +65,7 @@ export function buildMcpServer(): McpServer {
             type: 'text',
             text: JSON.stringify(
               results.map((r) => ({
-                content: r.content,
+                content: r.context,
                 document_filename: r.document_filename,
                 score: r.score,
                 source: r.source,
