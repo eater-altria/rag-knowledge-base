@@ -8,3 +8,13 @@ build/
 coverage/
 .cache/
 models/
+
+# tsc -b incremental build cache
+*.tsbuildinfo
+
+# tsc -b emits these when compiling vite.config.ts
+frontend/vite.config.js
+frontend/vite.config.d.ts
+
+# Playwright MCP session cache (screenshots / snapshots)
+.playwright-mcp/
