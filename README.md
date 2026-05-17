@@ -563,6 +563,50 @@ curl http://localhost:3000/api/kb
 - MCP 接口和 `/api/retrieve` **不共享**限流配置：MCP 调用走默认的全局限流（很宽松），如果暴露公网建议在 nginx 层加 rate limit。
 - 该端点和 `/api/retrieve` 一样**完全不做 LLM 汇总**，原文 chunk 逐字返回。
 
+## Claude / Codex Skill（可选）
+
+仓库自带一个 `rag-search` skill（在 `skill/rag-search/`），装到 Claude Code 或 Codex CLI 后，AI 会**自动**判断什么时候该查知识库、调对 MCP 工具、用召回原文总结回答，召回为空时还会主动问你"要不要用通用知识答"——免去你每次手动提示。
+
+### 装到 Claude Code
+
+```bash
+# 用户级（所有项目可用，推荐）
+mkdir -p ~/.claude/skills/
+cp -r skill/rag-search ~/.claude/skills/
+
+# 或项目级（只在当前仓库生效）
+mkdir -p .claude/skills/
+cp -r skill/rag-search .claude/skills/
+```
+
+下次新开 Claude Code 会话即生效，无需 restart。
+
+### 装到 Codex CLI
+
+Codex 不自动扫目录，需要 `~/.codex/config.toml` 里显式列：
+
+```bash
+mkdir -p ~/.codex/skills/
+cp -r skill/rag-search ~/.codex/skills/
+```
+
+```toml
+# 编辑 ~/.codex/config.toml 追加：
+[[skills.config]]
+path = "~/.codex/skills/rag-search"
+enabled = true
+```
+
+### 验证
+
+打开新会话问一句明显需要查内部资料的话：
+
+> 查一下知识库里 cheap-coder 是怎么工作的？
+
+正常的话 AI 会先调 `mcp__rag__list_knowledge_bases` → `mcp__rag__retrieve`，然后基于召回 chunk 总结回答（带出处）。如果什么工具调用都没发生，说明 skill 没触发——见 `skill/README.md` 的故障排查。
+
+> 完整文档（含 SKILL.md 内容、触发条件、回答约束、错误处理）见 [`skill/README.md`](./skill/README.md)。
+
 ## 批量上传
 
 **前端方式**：进入某个知识库的"管理文档"页 → 点 "**批量上传文件夹**" → 选一个文件夹 → 系统自动筛出 `.txt/.md/.pdf/.docx` → 依次上传并显示每个文件的状态（成功 chunk 数 / 失败原因）。子目录会被递归扫描。
