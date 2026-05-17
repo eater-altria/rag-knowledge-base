@@ -461,10 +461,24 @@ claude mcp add --transport http rag http://localhost:3000/mcp
 ```json
 {
   "mcpServers": {
-    "rag": { "url": "http://localhost:3000/mcp" }
+    "rag": { "url": "http://rag.local:3000/mcp" }
   }
 }
 ```
+
+**Codex CLI** — 编辑 `~/.codex/config.toml`：
+
+```toml
+[mcp_servers.rag]
+url = "http://rag.local:3000/mcp"
+# 可选：
+# tool_timeout_sec = 60         # 单次工具调用超时
+# startup_timeout_sec = 10      # 初始化超时
+# required = false              # 启动连不上时是否中止 Codex
+# enabled_tools = ["list_knowledge_bases", "retrieve"]
+```
+
+Codex 同时支持 stdio 和 streamable HTTP transport，我们的 `/mcp` 是 HTTP 模式直接 `url=` 即可。
 
 挂载后 LLM 通常先调 `list_knowledge_bases` 拿 `kb_id`，再调 `retrieve` 检索。
 

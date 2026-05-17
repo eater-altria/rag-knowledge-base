@@ -28,14 +28,44 @@ cp -r skill/rag-search .claude/skills/
 
 装完直接打开新的 Claude Code 会话即可，无需 restart。Claude 会按 SKILL.md frontmatter 里的 `description` 自动判断何时触发。
 
+### 装到 Codex CLI
+
+Codex 不会自动扫描 skill 目录，每个 skill 要在 `~/.codex/config.toml` 里显式列出路径：
+
+```bash
+# 1. 把 skill 放到约定位置
+mkdir -p ~/.codex/skills/
+cp -r skill/rag-search ~/.codex/skills/
+```
+
+```toml
+# 2. 编辑 ~/.codex/config.toml，加这一段：
+[[skills.config]]
+path = "~/.codex/skills/rag-search"
+enabled = true
+```
+
+下次起 Codex 会话即生效。Codex 跟 Claude Code 共用 `SKILL.md` + frontmatter 同一套格式，不需要改 skill 文件本身。
+
 ## 前置：挂载 RAG MCP server
 
-`rag-search` 这个 skill 依赖一个名为 `rag` 的 MCP server，**约定地址为 `http://rag.local:3000/mcp`**：
+`rag-search` 这个 skill 依赖一个名为 `rag` 的 MCP server，**约定地址为 `http://rag.local:3000/mcp`**。按你用的客户端选一段：
+
+**Claude Code**：
 
 ```bash
 claude mcp add --transport http rag http://rag.local:3000/mcp
 claude mcp list   # 应该能看到 rag
 ```
+
+**Codex CLI** — 编辑 `~/.codex/config.toml`：
+
+```toml
+[mcp_servers.rag]
+url = "http://rag.local:3000/mcp"
+```
+
+两个客户端都支持 streamable HTTP transport，直接写 url 即可。其他客户端（Claude Desktop / Cursor）的配置见仓库根 `README.md` 的 "MCP Server > 客户端配置" 一节。
 
 > 为什么用 `rag.local` 不写具体 IP？因为局域网 DHCP 分配的 IP 会变、不同人/不同时间不一样。把 skill 文件写死成 IP 就废了。`rag.local` 是约定的稳定逻辑域名，靠下面任一方式解析到当前实际地址。
 
