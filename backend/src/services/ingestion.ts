@@ -95,6 +95,70 @@ export async function listDocuments(kbId: string, limit: number, offset: number)
   return { items: items.rows, total: Number(total.rows[0].count) };
 }
 
+export type DocumentPreview = {
+  text: string;
+  total_chunks: number;
+  returned_chunks: number;
+  truncated: boolean;
+  next_offset: number;
+};
+
+export async function getDocumentText(
+  kbId: string,
+  documentId: string,
+  limit: number,
+  offset: number,
+): Promise<DocumentPreview | null> {
+  const owns = await pool.query('SELECT 1 FROM documents WHERE id = $1 AND kb_id = $2', [documentId, kbId]);
+  if (!owns.rowCount) return null;
+  const rows = await pool.query<{ content: string }>(
+    'SELECT content FROM chunks WHERE document_id = $1 ORDER BY chunk_index ASC LIMIT $2 OFFSET $3',
+    [documentId, limit, offset],
+  );
+  const totalRes = await pool.query<{ count: number }>(
+    'SELECT COUNT(*)::int AS count FROM chunks WHERE document_id = $1',
+    [documentId],
+  );
+  const total_chunks = totalRes.rows[0].count;
+  const returned_chunks = rows.rowCount ?? 0;
+  const next_offset = offset + returned_chunks;
+  return {
+    text: rows.rows.map((r) => r.content).join('\n\n'),
+    total_chunks,
+    returned_chunks,
+    truncated: next_offset < total_chunks,
+    next_offset,
+  };
+}
+
+export type DocumentRow = {
+  id: string;
+  filename: string;
+  mime_type: string;
+  size_bytes: number;
+  chunk_count: number;
+  created_at: string;
+};
+
+export async function renameDocument(
+  kbId: string,
+  documentId: string,
+  filename: string,
+): Promise<DocumentRow | null> {
+  const updated = await pool.query(
+    `UPDATE documents SET filename = $1
+     WHERE id = $2 AND kb_id = $3
+     RETURNING id, filename, mime_type, size_bytes, created_at`,
+    [filename, documentId, kbId],
+  );
+  if (!updated.rowCount) return null;
+  const cnt = await pool.query<{ count: number }>(
+    'SELECT COUNT(*)::int AS count FROM chunks WHERE document_id = $1',
+    [documentId],
+  );
+  return { ...updated.rows[0], chunk_count: cnt.rows[0].count };
+}
+
 export async function deleteDocument(kbId: string, documentId: string): Promise<boolean> {
   const r = await pool.query('SELECT 1 FROM documents WHERE id = $1 AND kb_id = $2', [documentId, kbId]);
   if (!r.rowCount) return false;

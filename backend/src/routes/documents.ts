@@ -2,7 +2,14 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { requireAdmin } from '../middleware/jwt.js';
 import { getKnowledgeBase } from '../services/kb.js';
-import { deleteDocument, ingestDocument, listDocuments, TooManyChunksError } from '../services/ingestion.js';
+import {
+  deleteDocument,
+  getDocumentText,
+  ingestDocument,
+  listDocuments,
+  renameDocument,
+  TooManyChunksError,
+} from '../services/ingestion.js';
 import { UnsupportedFileTypeError } from '../services/parser.js';
 import { logger } from '../logger.js';
 
@@ -11,7 +18,21 @@ const listSchema = z.object({
   offset: z.coerce.number().int().min(0).default(0),
 });
 
+const previewSchema = z.object({
+  limit: z.coerce.number().int().min(1).max(200).default(50),
+  offset: z.coerce.number().int().min(0).default(0),
+});
+
+const renameSchema = z.object({
+  filename: z
+    .string()
+    .transform((s) => s.trim())
+    .pipe(z.string().min(1).max(255))
+    .refine((s) => !s.includes('/') && !s.includes('\0')),
+});
+
 export async function documentRoutes(app: FastifyInstance) {
+  // All handlers below inherit this preHandler — new routes don't need to re-add it.
   app.addHook('preHandler', requireAdmin);
 
   app.get<{ Params: { id: string }; Querystring: Record<string, string> }>(
@@ -50,6 +71,37 @@ export async function documentRoutes(app: FastifyInstance) {
         logger.error({ err: e, kbId: req.params.id }, 'ingestion failed');
         return reply.code(500).send({ error: 'ingestion_failed', reason: err.message });
       }
+    },
+  );
+
+  app.get<{ Params: { id: string; doc_id: string }; Querystring: Record<string, string> }>(
+    '/api/admin/kb/:id/documents/:doc_id/preview',
+    async (req, reply) => {
+      const kb = await getKnowledgeBase(req.params.id);
+      if (!kb) return reply.code(404).send({ error: 'kb_not_found' });
+      const parsed = previewSchema.safeParse(req.query);
+      if (!parsed.success) return reply.code(400).send({ error: 'invalid_request' });
+      const result = await getDocumentText(
+        req.params.id,
+        req.params.doc_id,
+        parsed.data.limit,
+        parsed.data.offset,
+      );
+      if (!result) return reply.code(404).send({ error: 'document_not_found' });
+      reply.send(result);
+    },
+  );
+
+  app.patch<{ Params: { id: string; doc_id: string }; Body: unknown }>(
+    '/api/admin/kb/:id/documents/:doc_id',
+    async (req, reply) => {
+      const kb = await getKnowledgeBase(req.params.id);
+      if (!kb) return reply.code(404).send({ error: 'kb_not_found' });
+      const parsed = renameSchema.safeParse(req.body);
+      if (!parsed.success) return reply.code(400).send({ error: 'invalid_request' });
+      const updated = await renameDocument(req.params.id, req.params.doc_id, parsed.data.filename);
+      if (!updated) return reply.code(404).send({ error: 'document_not_found' });
+      reply.send(updated);
     },
   );
 

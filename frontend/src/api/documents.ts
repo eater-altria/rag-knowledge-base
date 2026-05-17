@@ -9,6 +9,14 @@ export type DocumentRow = {
   created_at: string;
 };
 
+export type DocumentPreview = {
+  text: string;
+  total_chunks: number;
+  returned_chunks: number;
+  truncated: boolean;
+  next_offset: number;
+};
+
 export const documentApi = {
   list: (kbId: string, limit = 50, offset = 0) =>
     api
@@ -34,4 +42,12 @@ export const documentApi = {
     }).then((r) => r.data);
   },
   remove: (kbId: string, docId: string) => api.delete(`/admin/kb/${kbId}/documents/${docId}`),
+  preview: (kbId: string, docId: string, limit = 50, offset = 0) =>
+    api
+      .get<DocumentPreview>(`/admin/kb/${kbId}/documents/${docId}/preview`, { params: { limit, offset } })
+      .then((r) => r.data),
+  rename: (kbId: string, docId: string, filename: string) =>
+    api
+      .patch<DocumentRow>(`/admin/kb/${kbId}/documents/${docId}`, { filename })
+      .then((r) => r.data),
 };
