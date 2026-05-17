@@ -131,8 +131,8 @@ make --version    # 输出 GNU Make 3.x 或 4.x
 
 ```bash
 # 1. 拿到代码
-git clone <this-repo-url> rag-repo
-cd rag-repo
+git clone https://github.com/eater-altria/rag-knowledge-base.git
+cd rag-knowledge-base
 
 # 2. 复制环境变量模板
 cp docker/.env.example docker/.env
