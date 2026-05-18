@@ -1,6 +1,6 @@
 # RAG Knowledge Base
 
-自托管、离线可用的 RAG 知识库。多知识库隔离 / 本地 BGE embedding + reranker / Postgres + Qdrant 双库 / Node + React / Docker compose 一键启动 / amd64 + arm64 双架构。
+自托管、离线可用的 RAG 知识库。多知识库隔离 / 本地 BGE embedding + reranker / Postgres + Qdrant 双库 / Node + React / `docker run` 单镜像 或 docker compose 多服务 / amd64 + arm64 双架构。
 
 ## 架构
 
@@ -21,6 +21,52 @@
                    │ 元数据/原文 │        └─────────────┘
                    └────────────┘
 ```
+
+## 一键运行（单镜像）
+
+只想 5 分钟试一下、不想 clone 代码、不想编辑 `.env`？用 all-in-one 镜像 — PG + zhparser、Qdrant、backend、frontend 全打在一个镜像里，s6-overlay 协调启动。**只需要 Docker**。
+
+```bash
+docker run -d --name rag \
+  -p 3000:3000 \
+  -v rag-data:/data \
+  eateraltria/rag-kb:latest         # ← 替换成你自己的 Docker Hub 镜像
+```
+
+打开 http://localhost:3000，按引导建管理员账户即可。
+
+**关键点**：
+
+- `JWT_SECRET` 和 `POSTGRES_PASSWORD` 容器首次启动会随机生成并持久化到 `/data/.env`，你完全不用管。想自己指定就加 `-e JWT_SECRET=... -e POSTGRES_PASSWORD=...`，会覆盖默认。
+- 所有数据（PG / Qdrant / 模型缓存）都在 `/data` 这一个 volume 里，要清空就 `docker rm -f rag && docker volume rm rag-data`。
+- **首次启动 2–3 分钟**：PG initdb + zhparser + Qdrant 起来 + backend 下载 BGE 模型权重（~500MB，需要外网）。`docker logs -f rag` 跟进度。后续启动几秒钟内完成。
+- 局域网访问、`rag.local` 配置、MCP 接入、暴露端口等，跟下面 compose 版完全一样 — 接着看后面的章节即可。
+
+**自己构建（不依赖 Docker Hub）**
+
+如果不想用别人发布的镜像，clone 仓库自己构建：
+
+```bash
+git clone https://github.com/eater-altria/rag-knowledge-base.git
+cd rag-knowledge-base
+make aio-build                                 # 等价: docker buildx build -f docker/all-in-one/Dockerfile -t rag-kb:latest --load .
+make aio-run                                   # 等价: docker run -d --name rag-kb -p 3000:3000 -v rag-data:/data rag-kb:latest
+
+# 推到自己的 Docker Hub（多架构）
+make aio-push IMAGE=youruser/rag-kb:v0.1
+```
+
+**什么时候该用 compose 而不是单镜像？**
+
+| 场景 | 推荐 |
+|------|------|
+| 个人试用、demo、临时部署 | **单镜像** |
+| 多人共享的生产环境 | **compose**（各服务独立扩缩、日志分离、升级粒度细） |
+| 需要单独调 PG / Qdrant 配置 | **compose** |
+| 想横向扩 backend | **compose** |
+| 资源紧张（< 4 GB RAM / 2 vCPU） | **compose**（可以分机器，单镜像必须挤一起） |
+
+下面"环境准备 → 快速开始"是 compose 路线，更适合长期使用。
 
 ## 环境准备（零基础）
 
@@ -667,11 +713,15 @@ curl -X POST "http://localhost:3000/api/admin/kb/$KB_ID/documents/batch" \
 backend/         Fastify + TypeScript
 frontend/        Vite + React + Tailwind
 docker/
-  compose.yaml   一键编排
-  bake.hcl       多架构镜像构建
+  compose.yaml   多服务编排（生产推荐）
+  bake.hcl       多架构镜像构建（含 all-in-one 目标）
   .env.example   全部可配置项
   postgres/
     Dockerfile   基于 postgres:16 + zhparser
     init.sql     建表 + 中文 ts_config + GIN
+  all-in-one/    单镜像版本（PG + Qdrant + backend + frontend）
+    Dockerfile   多 stage 构建，s6-overlay 启动
+    nginx.conf   单容器内 nginx 配置（反代到 127.0.0.1）
+    rootfs/      s6-rc 服务树（init-env / postgres / qdrant / backend / nginx）
 openspec/        change & spec 文档（详见 openspec/changes/add-rag-knowledge-base/）
 ```
