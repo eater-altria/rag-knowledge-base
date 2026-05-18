@@ -56,8 +56,8 @@ export function buildMcpServer(): McpServer {
         kbId: kb_id,
         query,
         topK: top_k ?? 5,
-        vectorK: 20,
-        keywordK: 20,
+        vectorK: 50,
+        keywordK: 50,
       });
       return {
         content: [

@@ -4,6 +4,7 @@ import { rerank } from './reranker.js';
 import { searchPoints, type VectorHit } from '../qdrant/client.js';
 import { logger } from '../logger.js';
 import { config } from '../config.js';
+import { reciprocalRankFusion } from './rrf.js';
 
 export type RetrieveInput = {
   kbId: string;
@@ -103,19 +104,17 @@ export async function retrieve(input: RetrieveInput): Promise<RetrievedChunk[]> 
     keywordSearch(input.kbId, input.query, input.keywordK),
   ]);
 
-  const merged = new Map<string, { document_id: string; sources: Set<'vector' | 'keyword'> }>();
-  for (const h of vec) {
-    const cur = merged.get(h.chunk_id) ?? { document_id: h.document_id, sources: new Set() };
-    cur.sources.add('vector');
-    merged.set(h.chunk_id, cur);
-  }
-  for (const h of kw) {
-    const cur = merged.get(h.chunk_id) ?? { document_id: h.document_id, sources: new Set() };
-    cur.sources.add('keyword');
-    merged.set(h.chunk_id, cur);
-  }
-  const candidateIds = [...merged.keys()];
-  if (candidateIds.length === 0) return [];
+  // RRF fuses the two ranked lists into a single rank-aware ordering, then
+  // we truncate to RERANK_CANDIDATES so the cross-encoder workload is bounded
+  // even when vector_k + keyword_k is large.
+  const fused = reciprocalRankFusion([
+    { name: 'vector', hits: vec },
+    { name: 'keyword', hits: kw },
+  ]);
+  if (fused.length === 0) return [];
+  const fusedTop = fused.slice(0, config.RERANK_CANDIDATES);
+  const candidateIds = fusedTop.map((c) => c.chunk_id);
+  const sourceByChunk = new Map(fusedTop.map((c) => [c.chunk_id, c.sources]));
 
   const rows = await pool.query<{
     id: string;
@@ -134,7 +133,7 @@ export async function retrieve(input: RetrieveInput): Promise<RetrievedChunk[]> 
 
   const scores = await rerank(input.query, rows.rows.map((r) => r.content));
   const scored = rows.rows.map((row, i) => {
-    const sources = merged.get(row.id)?.sources ?? new Set();
+    const sources = sourceByChunk.get(row.id) ?? new Set();
     const source: 'vector' | 'keyword' | 'both' =
       sources.size === 2 ? 'both' : sources.has('vector') ? 'vector' : 'keyword';
     return {
@@ -174,7 +173,13 @@ export async function retrieve(input: RetrieveInput): Promise<RetrievedChunk[]> 
   }));
 
   logger.info(
-    { kbId: input.kbId, candidates: scored.length, returned: out.length, window },
+    {
+      kbId: input.kbId,
+      fused: fused.length,
+      reranked: scored.length,
+      returned: out.length,
+      window,
+    },
     'retrieve done',
   );
   return out;
