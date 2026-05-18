@@ -1,0 +1,8 @@
+#!/command/with-contenv sh
+export QDRANT__STORAGE__STORAGE_PATH=/data/qdrant
+export QDRANT__SERVICE__HOST=127.0.0.1
+export QDRANT__SERVICE__HTTP_PORT=6333
+export QDRANT__SERVICE__GRPC_PORT=6334
+export QDRANT__TELEMETRY_DISABLED=true
+cd /opt/qdrant
+exec ./qdrant

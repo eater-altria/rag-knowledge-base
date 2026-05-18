@@ -1,0 +1,4 @@
+#!/command/with-contenv sh
+# Backend may still be loading BGE models on first start; nginx will retry
+# upstream on its own, so we don't block here.
+exec nginx -g 'daemon off;'
