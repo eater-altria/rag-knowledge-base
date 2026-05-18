@@ -1,0 +1,22 @@
+{
+  "name": "example",
+  "kb": "replace-with-your-kb-name-or-uuid",
+  "top_k": 5,
+  "match": "context",
+  "cases": [
+    {
+      "query": "什么是 RAG？",
+      "expected_filenames": ["intro.md"],
+      "expected_substrings": ["检索增强生成"]
+    },
+    {
+      "query": "如何启动整个系统？",
+      "expected_filenames": ["README.md"],
+      "expected_substrings": ["docker compose"]
+    },
+    {
+      "query": "向量库用的是哪一个？",
+      "expected_substrings": ["Qdrant"]
+    }
+  ]
+}

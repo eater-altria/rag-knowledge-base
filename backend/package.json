@@ -8,6 +8,7 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
     "admin:reset": "tsx src/cli/admin-reset.ts",
+    "eval": "tsx src/cli/eval.ts",
     "test": "vitest run"
   },
   "dependencies": {
