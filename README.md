@@ -30,7 +30,7 @@
 docker run -d --name rag \
   -p 3000:3000 \
   -v rag-data:/data \
-  eateraltria/rag-kb:latest         # ← 替换成你自己的 Docker Hub 镜像
+  altriayu/rag-kb:latest            # amd64 + arm64 多架构
 ```
 
 打开 http://localhost:3000，按引导建管理员账户即可。
