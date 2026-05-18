@@ -8,8 +8,8 @@ const schema = z.object({
   kb_id: z.string().uuid(),
   query: z.string().min(1).max(2000),
   top_k: z.number().int().min(1).max(50).default(10),
-  vector_k: z.number().int().min(1).max(100).default(20),
-  keyword_k: z.number().int().min(1).max(100).default(20),
+  vector_k: z.number().int().min(1).max(200).default(50),
+  keyword_k: z.number().int().min(1).max(200).default(50),
 });
 
 export async function retrieveRoutes(app: FastifyInstance) {

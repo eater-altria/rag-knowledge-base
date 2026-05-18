@@ -26,6 +26,13 @@ const schema = z.object({
   CHUNK_OVERLAP: z.coerce.number().int().nonnegative().default(80),
 
   RETRIEVE_RATE_PER_MIN: z.coerce.number().int().positive().default(60),
+  // Number of adjacent chunks to attach on each side of every reranker hit
+  // when building the returned `context` field. 0 disables expansion.
+  RETRIEVE_WINDOW_SIZE: z.coerce.number().int().min(0).max(5).default(1),
+  // After RRF fusion of vector + keyword hits, keep at most this many
+  // candidates to feed into the cross-encoder reranker. Bigger = better
+  // coverage but proportionally slower rerank.
+  RERANK_CANDIDATES: z.coerce.number().int().positive().max(200).default(50),
 
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
 });

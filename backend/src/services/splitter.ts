@@ -25,8 +25,15 @@ function splitBySeparators(text: string, chunkSize: number, seps: string[]): str
   const parts = sep === '' ? sliceFixed(text, chunkSize) : text.split(sep);
 
   const out: string[] = [];
-  for (const part of parts) {
-    const piece = sep && part.length > 0 ? part + sep : part;
+  // Re-attach the separator that `split` consumed, but only when (a) the
+  // separator actually divided the text (parts.length > 1) and (b) this part
+  // was followed by sep in the original (i.e. not the last element). Without
+  // this guard we'd append phantom characters that weren't in the input and
+  // pollute downstream hard slicing.
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
+    const reattachSep = sep && part.length > 0 && parts.length > 1 && i < parts.length - 1;
+    const piece = reattachSep ? part + sep : part;
     if (piece.length <= chunkSize) {
       if (piece.length > 0) out.push(piece);
     } else if (rest.length > 0) {

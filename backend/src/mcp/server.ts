@@ -56,8 +56,8 @@ export function buildMcpServer(): McpServer {
         kbId: kb_id,
         query,
         topK: top_k ?? 5,
-        vectorK: 20,
-        keywordK: 20,
+        vectorK: 50,
+        keywordK: 50,
       });
       return {
         content: [
@@ -65,7 +65,7 @@ export function buildMcpServer(): McpServer {
             type: 'text',
             text: JSON.stringify(
               results.map((r) => ({
-                content: r.content,
+                content: r.context,
                 document_filename: r.document_filename,
                 score: r.score,
                 source: r.source,
