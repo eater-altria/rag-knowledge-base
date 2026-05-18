@@ -223,11 +223,34 @@ run_container() {
     log_info "清理旧容器..."
     docker rm -f "$RAG_CONTAINER_NAME" >/dev/null
   fi
-  docker run -d \
+
+  # Pass through HF_ENDPOINT for users in regions where huggingface.co is
+  # slow/blocked (e.g. mainland China uses hf-mirror.com).
+  local env_args=()
+  if [ -n "${HF_ENDPOINT:-}" ]; then
+    env_args+=(-e "HF_ENDPOINT=$HF_ENDPOINT")
+    log_info "透传 HF_ENDPOINT=$HF_ENDPOINT 给容器"
+  fi
+
+  if ! docker run -d \
     --name "$RAG_CONTAINER_NAME" \
     -p "${SELECTED_PORT}:3000" \
     -v "${RAG_VOLUME}:/data" \
-    "$RAG_IMAGE" >/dev/null
+    "${env_args[@]}" \
+    "$RAG_IMAGE" >/dev/null; then
+    log_error "docker run 失败。手动重试看完整错误:"
+    local env_flag=""
+    [ -n "${HF_ENDPOINT:-}" ] && env_flag=" -e HF_ENDPOINT=$HF_ENDPOINT"
+    log_info "  docker run -d --name $RAG_CONTAINER_NAME -p ${SELECTED_PORT}:3000 -v ${RAG_VOLUME}:/data${env_flag} $RAG_IMAGE"
+    exit 1
+  fi
+
+  # Verify the container actually exists (defensive: trust docker ps, not just exit code)
+  sleep 1
+  if ! docker ps --format '{{.Names}}' | grep -q "^${RAG_CONTAINER_NAME}$"; then
+    log_error "容器创建后立即消失。运行 'docker ps -a' 和 'docker logs $RAG_CONTAINER_NAME' 排查。"
+    exit 1
+  fi
   log_ok "容器已启动"
 }
 

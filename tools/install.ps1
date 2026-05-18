@@ -59,7 +59,14 @@ $env:WSL_UTF8 = '1'
 # common protection for all native command calls in this script.
 function Invoke-NativeQuiet {
     param([Parameter(Mandatory)][scriptblock]$Script)
-    try { & $Script | Out-Null } catch { }
+    $global:LASTEXITCODE = 0
+    try { & $Script | Out-Null } catch {
+        # If the throw happened before the native command set its exit code
+        # (e.g., command not found, decoder exception), mark as failure so the
+        # caller's $LASTEXITCODE check doesn't see a stale 0 from a previous
+        # successful command.
+        if ($global:LASTEXITCODE -eq 0) { $global:LASTEXITCODE = 1 }
+    }
 }
 
 # ---------- Config (env vars win over defaults) ----------
@@ -257,17 +264,62 @@ function Invoke-PullWithRetry {
 function Start-RagContainer {
     param([int]$Port)
     Write-Step "启动容器 $RagContainerName..."
+
+    # Clean up existing container with same name
     $existing = ''
     try { $existing = & docker ps -a --format '{{.Names}}' 2>$null } catch { }
     if ($existing -and ($existing -split "`n" | Where-Object { $_.Trim() -eq $RagContainerName })) {
         Write-LogInfo "清理旧容器..."
-        Invoke-NativeQuiet { docker rm -f $RagContainerName }
+        try { & docker rm -f $RagContainerName 2>&1 | Out-Null } catch { }
     }
-    Invoke-NativeQuiet { docker run -d --name $RagContainerName -p "${Port}:3000" -v "${RagVolume}:/data" $RagImage }
-    if ($LASTEXITCODE -ne 0) {
-        Write-Err "docker run 失败。请检查 Docker 状态后重试。"
+
+    # Build env-var args: passthrough HF_ENDPOINT for users in regions where
+    # huggingface.co is slow/blocked (e.g. mainland China uses hf-mirror.com).
+    $envArgs = @()
+    if ($env:HF_ENDPOINT) {
+        $envArgs += '-e'
+        $envArgs += "HF_ENDPOINT=$env:HF_ENDPOINT"
+        Write-LogInfo "透传 HF_ENDPOINT=$env:HF_ENDPOINT 给容器"
+    }
+
+    # Run container — capture output so we can show docker's actual error on
+    # failure (not just our generic message). 2>&1 merges stderr into success
+    # stream; try/catch around the call protects against PS 7.4+ native-cmd
+    # auto-throw on non-zero exit.
+    $runOutput = ''
+    $global:LASTEXITCODE = 0
+    try {
+        $runOutput = & docker run -d --name $RagContainerName `
+            -p "${Port}:3000" -v "${RagVolume}:/data" `
+            @envArgs $RagImage 2>&1 | Out-String
+    } catch {
+        $runOutput = $_.Exception.Message
+        if ($global:LASTEXITCODE -eq 0) { $global:LASTEXITCODE = 1 }
+    }
+    $runExitCode = $global:LASTEXITCODE
+
+    # Verify container actually exists & is running. Don't trust just the exit
+    # code — past bugs have shown silent failures where exit=0 but no container.
+    Start-Sleep -Seconds 1
+    $running = ''
+    try { $running = & docker ps --format '{{.Names}}' 2>$null } catch { }
+    $isRunning = $running -and ($running -split "`n" | Where-Object { $_.Trim() -eq $RagContainerName })
+
+    if ($runExitCode -ne 0 -or -not $isRunning) {
+        Write-Err "docker run 失败或容器未成功启动 (exit=$runExitCode, isRunning=$isRunning)。"
+        Write-Host ''
+        Write-LogInfo "Docker 实际输出:"
+        Write-Host ($runOutput | Out-String).TrimEnd()
+        Write-Host ''
+        Write-LogInfo "诊断:"
+        Write-LogInfo "  docker ps -a                          # 看容器是否在 (即使停止)"
+        Write-LogInfo "  docker logs $RagContainerName         # 如有容器,看日志"
+        $envFlag = if ($env:HF_ENDPOINT) { " -e HF_ENDPOINT=$env:HF_ENDPOINT" } else { '' }
+        Write-LogInfo "  docker run -d --name $RagContainerName -p ${Port}:3000 -v ${RagVolume}:/data$envFlag $RagImage"
+        Write-LogInfo "  # ↑ 手动跑一遍看完整错误"
         exit 1
     }
+
     Write-Ok "容器已启动"
 }
 

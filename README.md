@@ -74,6 +74,7 @@ notepad install.ps1                # 自己看一遍
 | `RAG_PORT` | `3000` | 默认占用时自动 fallback 3001–3009；显式指定后不 fallback |
 | `RAG_CONTAINER_NAME` | `rag` | 容器名 |
 | `RAG_VOLUME` | `rag-data` | 数据卷名 |
+| `HF_ENDPOINT` | (空 = 走 huggingface.co) | 中国大陆访问 HF 很慢/被墙时,设 `https://hf-mirror.com` 走国内镜像。脚本会自动透传给容器内的 BGE 模型下载器 |
 
 ### 卸载
 
