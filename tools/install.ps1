@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     RAG Knowledge Base - one-click installer (Windows).
 .DESCRIPTION
