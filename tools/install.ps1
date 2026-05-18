@@ -38,12 +38,28 @@ $PSNativeCommandUseErrorActionPreference = $false
 
 # Switch console to UTF-8 so (a) our own UTF-8 BOM-encoded Chinese messages
 # render correctly and (b) captured stdout/stderr from native commands isn't
-# mangled if they emit UTF-8. Modern wsl/docker/winget on Win11 handle this OK.
+# mangled if they emit UTF-8. Modern docker/winget on Win11 handle this OK.
 try {
     [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
     $OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 } catch {
     # Older PowerShell may not allow this; harmless to skip.
+}
+
+# wsl.exe defaults to UTF-16 LE output, which PowerShell can't decode through
+# 2>&1 capture (throws DecoderFallbackException on Chinese Windows). Setting
+# WSL_UTF8=1 forces UTF-8 — supported since WSL 0.64.0 (mid-2022). See:
+# https://learn.microsoft.com/en-us/windows/wsl/release-notes#0640
+$env:WSL_UTF8 = '1'
+
+# Run a native command, swallow any exception (so caller can rely solely on
+# $LASTEXITCODE). PowerShell 7.4+ can throw on native non-zero exit even with
+# $PSNativeCommandUseErrorActionPreference=$false in some edge cases (notably
+# when stderr capture hits decoding issues), so this wrapper is the safest
+# common protection for all native command calls in this script.
+function Invoke-NativeQuiet {
+    param([Parameter(Mandatory)][scriptblock]$Script)
+    try { & $Script | Out-Null } catch { }
 }
 
 # ---------- Config (env vars win over defaults) ----------
@@ -106,13 +122,13 @@ function Test-Wsl2 {
     # `wsl --status` exit code is the most reliable, locale-independent signal.
     # Output strings are localized (e.g. Chinese Windows says "默认版本: 2"),
     # so parsing the text is fragile.
-    & wsl --status 2>&1 | Out-Null
+    Invoke-NativeQuiet { wsl --status 2>&1 }
     return ($LASTEXITCODE -eq 0)
 }
 
 function Install-Wsl2 {
     Write-Step "正在安装 WSL2(自动启用 Hyper-V / VirtualMachinePlatform / 装 Ubuntu)..."
-    & wsl --install
+    try { & wsl --install } catch { }
     if ($LASTEXITCODE -ne 0) {
         Write-Err "wsl --install 失败(退出码 $LASTEXITCODE)。请检查 Windows 版本和网络后重试。"
         exit 1
@@ -128,7 +144,7 @@ function Test-Docker {
     if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
         return 2
     }
-    & docker info 2>&1 | Out-Null
+    Invoke-NativeQuiet { docker info 2>&1 }
     if ($LASTEXITCODE -eq 0) { return 0 } else { return 1 }
 }
 
@@ -138,7 +154,7 @@ function Install-DockerDesktop {
     $winget = Get-Command winget -ErrorAction SilentlyContinue
     if ($winget) {
         Write-LogInfo "使用 winget 安装(推荐)..."
-        & winget install -e --id Docker.DockerDesktop --accept-source-agreements --accept-package-agreements
+        try { & winget install -e --id Docker.DockerDesktop --accept-source-agreements --accept-package-agreements } catch { }
         if ($LASTEXITCODE -eq 0) {
             Write-Ok "Docker Desktop 安装成功"
             return
@@ -179,7 +195,7 @@ function Start-DockerDesktop {
     $elapsed = 0
     $timeout = 120
     while ($elapsed -lt $timeout) {
-        & docker info 2>&1 | Out-Null
+        Invoke-NativeQuiet { docker info 2>&1 }
         if ($LASTEXITCODE -eq 0) {
             Write-Host ''
             Write-Ok "Docker daemon 已就绪 (${elapsed}s)"
@@ -226,7 +242,7 @@ function Find-FreePort {
 function Invoke-PullWithRetry {
     Write-Step "拉取镜像 $RagImage..."
     for ($i = 1; $i -le 3; $i++) {
-        & docker pull $RagImage
+        try { & docker pull $RagImage } catch { }
         if ($LASTEXITCODE -eq 0) {
             Write-Ok "镜像拉取成功"
             return
@@ -241,12 +257,13 @@ function Invoke-PullWithRetry {
 function Start-RagContainer {
     param([int]$Port)
     Write-Step "启动容器 $RagContainerName..."
-    $existing = & docker ps -a --format '{{.Names}}' 2>$null
+    $existing = ''
+    try { $existing = & docker ps -a --format '{{.Names}}' 2>$null } catch { }
     if ($existing -and ($existing -split "`n" | Where-Object { $_.Trim() -eq $RagContainerName })) {
         Write-LogInfo "清理旧容器..."
-        & docker rm -f $RagContainerName | Out-Null
+        Invoke-NativeQuiet { docker rm -f $RagContainerName }
     }
-    & docker run -d --name $RagContainerName -p "${Port}:3000" -v "${RagVolume}:/data" $RagImage | Out-Null
+    Invoke-NativeQuiet { docker run -d --name $RagContainerName -p "${Port}:3000" -v "${RagVolume}:/data" $RagImage }
     if ($LASTEXITCODE -ne 0) {
         Write-Err "docker run 失败。请检查 Docker 状态后重试。"
         exit 1
@@ -306,21 +323,22 @@ function Show-Summary {
 function Invoke-Uninstall {
     param([bool]$DoPurge)
     Write-Step "卸载 RAG 容器和镜像..."
-    $existing = & docker ps -a --format '{{.Names}}' 2>$null
+    $existing = ''
+    try { $existing = & docker ps -a --format '{{.Names}}' 2>$null } catch { }
     if ($existing -and ($existing -split "`n" | Where-Object { $_.Trim() -eq $RagContainerName })) {
-        & docker rm -f $RagContainerName | Out-Null
+        Invoke-NativeQuiet { docker rm -f $RagContainerName }
         Write-Ok "容器已删除"
     }
-    & docker image inspect $RagImage 2>&1 | Out-Null
+    Invoke-NativeQuiet { docker image inspect $RagImage 2>&1 }
     if ($LASTEXITCODE -eq 0) {
-        & docker rmi $RagImage 2>&1 | Out-Null
+        Invoke-NativeQuiet { docker rmi $RagImage 2>&1 }
         Write-Ok "镜像已删除"
     }
     if ($DoPurge) {
         Write-Host "将永久删除数据卷 $RagVolume(包含所有知识库、文档、账号、模型)。" -ForegroundColor Yellow
         $confirm = Read-Host "输入 yes 继续"
         if ($confirm -eq 'yes') {
-            & docker volume rm $RagVolume 2>&1 | Out-Null
+            Invoke-NativeQuiet { docker volume rm $RagVolume 2>&1 }
             Write-Ok "数据卷 $RagVolume 已删除"
         } else {
             Write-LogInfo "已取消 purge,数据保留"
