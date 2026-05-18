@@ -22,6 +22,77 @@
                    └────────────┘
 ```
 
+## 极简模式 — 一键安装（崭新机器也能跑）
+
+完全没装过 Docker？粘下面一条命令就行，脚本会自动装 Docker 运行时 + 拉镜像 + 启动 + 打开浏览器。**5–10 分钟完成**（看网速）。
+
+**macOS / Linux**：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/eater-altria/rag-knowledge-base/main/tools/install.sh | bash
+```
+
+**Windows 11**（普通 PowerShell 即可粘贴，脚本会自动弹 UAC 提权）：
+
+```powershell
+iwr -useb https://raw.githubusercontent.com/eater-altria/rag-knowledge-base/main/tools/install.ps1 -OutFile $env:TEMP\rag-install.ps1; & $env:TEMP\rag-install.ps1
+```
+
+**先审计再运行**（更安全）：
+
+```bash
+# macOS / Linux
+curl -fsSL https://raw.githubusercontent.com/eater-altria/rag-knowledge-base/main/tools/install.sh -o install.sh
+less install.sh                    # 自己看一遍
+bash install.sh
+```
+
+```powershell
+# Windows
+iwr -useb https://raw.githubusercontent.com/eater-altria/rag-knowledge-base/main/tools/install.ps1 -OutFile install.ps1
+notepad install.ps1                # 自己看一遍
+.\install.ps1
+```
+
+### 脚本做了什么
+
+| 平台 | 自动 | 用户必须手动 |
+|------|------|------|
+| macOS | 静默装 Homebrew → `brew install orbstack` → 启动 OrbStack → 拉镜像 → 跑容器 → 打开浏览器 | 在 OrbStack 首启窗口接受 ToS（1 次点击） |
+| Windows 11 | 自动 UAC 提权 → `wsl --install`（如缺）→ Docker Desktop 静默安装（`--quiet --accept-license`）→ 拉镜像 → 跑容器 → 打开浏览器 | UAC 弹窗点"是"；首次 WSL2 装完需重启电脑，重启后重跑同一命令即可继续 |
+| Linux | 检测 Docker → 拉镜像 → 跑容器 → 打开浏览器 | Docker 安装走官方 `get.docker.com`（脚本会提示） |
+
+> **macOS 用的是 OrbStack 而不是 Docker Desktop**：启动 ~2 秒（Docker Desktop 通常 10–30 秒），内存占用 ~300MB（Docker Desktop ~2GB），文件 I/O 快 2–3 倍。OrbStack **个人使用免费**，商业使用 $8/月。如不适用商业 license，可改用 `colima`：`brew install colima docker && colima start`。已装 Docker Desktop 的用户脚本会自动检测并直接用，不强迫切换。
+
+> **Windows**：脚本只能从文件运行（`iwr | iex` 形式在提权后拿不到自身路径），所以一键命令是"下载到 TEMP → 执行"，不是 `iex`。
+
+### 支持的环境变量
+
+| 变量 | 默认 | 说明 |
+|------|------|------|
+| `RAG_IMAGE` | `altriayu/rag-kb:latest` | 镜像 tag。固定版本用 `RAG_IMAGE=altriayu/rag-kb:v0.1.0 bash install.sh` |
+| `RAG_PORT` | `3000` | 默认占用时自动 fallback 3001–3009；显式指定后不 fallback |
+| `RAG_CONTAINER_NAME` | `rag` | 容器名 |
+| `RAG_VOLUME` | `rag-data` | 数据卷名 |
+
+### 卸载
+
+```bash
+# macOS / Linux
+bash install.sh --uninstall              # 删容器和镜像，保留数据
+bash install.sh --uninstall --purge      # 彻底清除（含数据）
+
+# Windows（管理员 PowerShell）
+& $env:TEMP\rag-install.ps1 -Uninstall
+& $env:TEMP\rag-install.ps1 -Uninstall -Purge
+```
+
+> 脚本**不会**卸载 OrbStack / Docker Desktop（它们可能服务其他用途），需手动从系统设置里卸载。
+
+如果你已经装好 Docker 或想看更细的步骤，下面的"一键运行（单镜像）"章节给出原始 `docker run` 命令。
+
+---
+
 ## 一键运行（单镜像）
 
 只想 5 分钟试一下、不想 clone 代码、不想编辑 `.env`？用 all-in-one 镜像 — PG + zhparser、Qdrant、backend、frontend 全打在一个镜像里，s6-overlay 协调启动。**只需要 Docker**。
@@ -706,6 +777,10 @@ curl -X POST "http://localhost:3000/api/admin/kb/$KB_ID/documents/batch" \
 | 上传报 `unsupported_file_type` | 仅接受 txt/md/pdf/docx |
 | 召回返回 429 | 触发限流，调整 `RETRIEVE_RATE_PER_MIN` 或等待 1 分钟 |
 | 忘记管理员密码 | `make reset-admin`，刷新页面会重新触发 setup |
+| 一键脚本卡在"等待 OrbStack / Docker daemon 就绪" | macOS：在 OrbStack 窗口接受首启 ToS；Windows：在 Docker Desktop 窗口完成首启配置。然后重跑同一条命令即可。 |
+| 一键脚本(Windows)报 `winget` 不存在 | 老版本 Windows 10。脚本会自动 fallback 到直接下载 Docker Desktop installer + 静默安装，正常无需手动操作；若 fallback 也失败请从 docker.com 手动下载安装后重跑。 |
+| 一键脚本报"端口 3000-3009 全部被占用" | 用 `RAG_PORT=8080 bash install.sh`（macOS/Linux）或 `$env:RAG_PORT='8080'; & $env:TEMP\rag-install.ps1`（Windows）显式指定一个空闲端口 |
+| 一键脚本说"服务已启动"但浏览器没自动打开 | 直接手动访问脚本末尾输出的 URL；若服务没起来用 `docker logs -f rag` 看进度（通常是首次 BGE 模型下载） |
 
 ## 仓库结构
 
