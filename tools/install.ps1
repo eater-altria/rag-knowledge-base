@@ -30,6 +30,22 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# PowerShell 7.4+ defaults $PSNativeCommandUseErrorActionPreference to $true,
+# which makes native commands (wsl, docker, winget) with non-zero exit throw
+# under 'Stop'. We rely on manual $LASTEXITCODE checks throughout, so disable
+# this coupling. No-op on PowerShell 5.1 / older 7.x.
+$PSNativeCommandUseErrorActionPreference = $false
+
+# Switch console to UTF-8 so (a) our own UTF-8 BOM-encoded Chinese messages
+# render correctly and (b) captured stdout/stderr from native commands isn't
+# mangled if they emit UTF-8. Modern wsl/docker/winget on Win11 handle this OK.
+try {
+    [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+    $OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+} catch {
+    # Older PowerShell may not allow this; harmless to skip.
+}
+
 # ---------- Config (env vars win over defaults) ----------
 $RagImage = if ($env:RAG_IMAGE) { $env:RAG_IMAGE } else { 'altriayu/rag-kb:latest' }
 $RagPort = if ($env:RAG_PORT) { [int]$env:RAG_PORT } else { 3000 }
