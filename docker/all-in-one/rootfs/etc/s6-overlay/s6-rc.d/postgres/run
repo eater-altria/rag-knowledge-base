@@ -1,0 +1,5 @@
+#!/command/with-contenv sh
+# Reuse the upstream postgres entrypoint so initdb, role/db creation, and
+# /docker-entrypoint-initdb.d/*.sql (zhparser + schema) run on first start.
+# Bind to loopback only; nothing outside the container needs PG.
+exec /usr/local/bin/docker-entrypoint.sh postgres -c listen_addresses=127.0.0.1

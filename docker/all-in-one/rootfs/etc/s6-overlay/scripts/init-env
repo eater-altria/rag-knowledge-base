@@ -1,0 +1,33 @@
+#!/bin/sh
+# First-boot bootstrap: generate persistent secrets if /data/.env is missing,
+# then hand the chosen values to s6's container environment so every other
+# service sees them via with-contenv. Externally provided -e flags always
+# win, since s6 has already populated /run/s6/container_environment/<var>
+# from the docker environment before this oneshot runs.
+set -eu
+
+ENV_FILE=/data/.env
+CONTAINER_ENV=/run/s6/container_environment
+mkdir -p /data /data/qdrant /data/models "$CONTAINER_ENV"
+
+if [ ! -f "$ENV_FILE" ]; then
+  jwt=$(head -c 64 /dev/urandom | base64 | tr -d '+/=' | cut -c1-48)
+  pgpw=$(head -c 32 /dev/urandom | base64 | tr -d '+/=' | cut -c1-24)
+  umask 077
+  printf 'JWT_SECRET=%s\nPOSTGRES_PASSWORD=%s\n' "$jwt" "$pgpw" > "$ENV_FILE"
+  echo "[init-env] generated $ENV_FILE on first boot"
+fi
+
+for var in JWT_SECRET POSTGRES_PASSWORD; do
+  if [ -f "$CONTAINER_ENV/$var" ] && [ -s "$CONTAINER_ENV/$var" ]; then
+    continue
+  fi
+  val=$(grep "^$var=" "$ENV_FILE" 2>/dev/null | head -1 | cut -d= -f2- || true)
+  if [ -n "$val" ]; then
+    printf '%s' "$val" > "$CONTAINER_ENV/$var"
+  fi
+done
+
+# PG data dir is owned + chmod 700'd by the postgres entrypoint on first run;
+# we just need /data writable, which the volume mount gives us.
+echo "[init-env] ready"

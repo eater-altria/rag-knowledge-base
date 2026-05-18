@@ -1,6 +1,7 @@
 COMPOSE := docker compose -f docker/compose.yaml
 
-.PHONY: up down logs ps build build-images push-images clean reset-admin
+.PHONY: up down logs ps build build-images push-images clean reset-admin \
+        aio-build aio-push aio-run aio-stop
 
 up:
 	$(COMPOSE) up -d
@@ -28,3 +29,21 @@ reset-admin:
 
 clean:
 	$(COMPOSE) down -v
+
+# ---- single-image (all-in-one) variant ----
+# `aio-build` builds locally for the host arch only. For multi-arch + push,
+# tag and use `aio-push` (set IMAGE=youruser/rag-kb:tag).
+IMAGE ?= rag-kb:latest
+
+aio-build:
+	docker buildx build -f docker/all-in-one/Dockerfile -t $(IMAGE) --load .
+
+aio-push:
+	docker buildx build -f docker/all-in-one/Dockerfile -t $(IMAGE) \
+	  --platform linux/amd64,linux/arm64 --push .
+
+aio-run:
+	docker run -d --name rag-kb -p 3000:3000 -v rag-data:/data $(IMAGE)
+
+aio-stop:
+	-docker rm -f rag-kb

@@ -1,0 +1,21 @@
+#!/command/with-contenv sh
+# s6 dependencies only guarantee that PG/Qdrant longruns have *started*, not
+# that they're accepting connections. Block until both are actually ready.
+echo "[backend] waiting for postgres..."
+until pg_isready -h 127.0.0.1 -U "${POSTGRES_USER:-rag}" -d "${POSTGRES_DB:-rag}" -q; do
+  sleep 1
+done
+echo "[backend] waiting for qdrant..."
+until curl -sf http://127.0.0.1:6333/readyz >/dev/null 2>&1; do
+  sleep 1
+done
+
+export POSTGRES_HOST=127.0.0.1
+export POSTGRES_PORT=5432
+export QDRANT_URL=http://127.0.0.1:6333
+export HTTP_PORT=3001
+export HTTP_HOST=127.0.0.1
+export MODEL_CACHE_DIR=/data/models
+
+cd /app/backend
+exec node dist/server.js
