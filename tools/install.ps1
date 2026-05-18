@@ -146,10 +146,33 @@ function Install-Wsl2 {
 }
 
 # ---------- Docker ----------
+function Update-PathFromRegistry {
+    # Re-read PATH from registry to pick up changes made by installers AFTER
+    # this PowerShell process started. Without this, a freshly installed
+    # Docker Desktop's docker.exe is invisible until you open a new shell.
+    $machinePath = [Environment]::GetEnvironmentVariable('PATH', 'Machine')
+    $userPath = [Environment]::GetEnvironmentVariable('PATH', 'User')
+    if ($machinePath) {
+        $env:PATH = if ($userPath) { "$machinePath;$userPath" } else { $machinePath }
+    }
+}
+
 function Test-Docker {
     # 0 = ready, 1 = installed but daemon down, 2 = not installed
     if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
-        return 2
+        # First try: refresh PATH from registry (cheap; covers installer
+        # additions since process start)
+        Update-PathFromRegistry
+        if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
+            # Second try: probe Docker Desktop's default install location and
+            # prepend it to PATH for this session if found
+            $candidate = Join-Path $env:ProgramFiles 'Docker\Docker\resources\bin\docker.exe'
+            if (Test-Path $candidate) {
+                $env:PATH = (Split-Path $candidate) + ';' + $env:PATH
+            } else {
+                return 2
+            }
+        }
     }
     Invoke-NativeQuiet { docker info 2>&1 }
     if ($LASTEXITCODE -eq 0) { return 0 } else { return 1 }
@@ -164,6 +187,7 @@ function Install-DockerDesktop {
         try { & winget install -e --id Docker.DockerDesktop --accept-source-agreements --accept-package-agreements } catch { }
         if ($LASTEXITCODE -eq 0) {
             Write-Ok "Docker Desktop 安装成功"
+            Update-PathFromRegistry
             return
         }
         Write-Warn "winget 安装失败(退出码 $LASTEXITCODE),fallback 到直接下载 installer..."
@@ -189,6 +213,7 @@ function Install-DockerDesktop {
         exit 1
     }
     Write-Ok "Docker Desktop 安装成功"
+    Update-PathFromRegistry
 }
 
 function Start-DockerDesktop {
