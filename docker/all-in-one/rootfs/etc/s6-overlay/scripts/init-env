@@ -11,8 +11,10 @@ CONTAINER_ENV=/run/s6/container_environment
 mkdir -p /data /data/qdrant /data/models "$CONTAINER_ENV"
 
 if [ ! -f "$ENV_FILE" ]; then
-  jwt=$(head -c 64 /dev/urandom | base64 | tr -d '+/=' | cut -c1-48)
-  pgpw=$(head -c 32 /dev/urandom | base64 | tr -d '+/=' | cut -c1-24)
+  # `base64` wraps at 76 chars by default; strip newlines along with the
+  # url-unsafe chars so the generated values fit on a single line.
+  jwt=$(head -c 64 /dev/urandom | base64 | tr -d '\n+/=' | cut -c1-48)
+  pgpw=$(head -c 32 /dev/urandom | base64 | tr -d '\n+/=' | cut -c1-24)
   umask 077
   printf 'JWT_SECRET=%s\nPOSTGRES_PASSWORD=%s\n' "$jwt" "$pgpw" > "$ENV_FILE"
   echo "[init-env] generated $ENV_FILE on first boot"

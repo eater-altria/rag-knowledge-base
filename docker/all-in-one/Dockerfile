@@ -68,10 +68,11 @@ ARG TARGETARCH
 ARG S6_OVERLAY_VERSION=3.2.0.2
 
 # nginx for serving the SPA + reverse-proxying /api and /mcp; curl for
-# liveness probes; libgomp1 for onnxruntime-node; xz-utils to unpack s6.
+# liveness probes; libgomp1 for onnxruntime-node; libunwind8 for qdrant
+# (libunwind-ptrace.so.0); xz-utils to unpack s6.
 RUN apt-get update && apt-get install -y --no-install-recommends \
       nginx curl ca-certificates xz-utils \
-      libgomp1 \
+      libgomp1 libunwind8 \
     && rm -rf /var/lib/apt/lists/* \
     && rm -f /etc/nginx/sites-enabled/default /etc/nginx/conf.d/default.conf
 
@@ -128,12 +129,14 @@ RUN chmod +x /etc/s6-overlay/scripts/init-env \
              /etc/s6-overlay/s6-rc.d/nginx/run
 
 # Defaults; -e at runtime wins because s6 seeds /run/s6/container_environment
-# from docker env before our init-env oneshot runs.
+# from docker env before our init-env oneshot runs. Do NOT set S6_KEEP_ENV=1:
+# that makes `with-contenv` skip reading /run/s6/container_environment, so
+# secrets written there by init-env (POSTGRES_PASSWORD, JWT_SECRET) never
+# reach the postgres/backend longruns.
 ENV POSTGRES_DB=rag \
     POSTGRES_USER=rag \
     PGDATA=/data/postgres \
     NODE_ENV=production \
-    S6_KEEP_ENV=1 \
     S6_BEHAVIOUR_IF_STAGE2_FAILS=2 \
     S6_CMD_WAIT_FOR_SERVICES_MAXTIME=0
 
