@@ -30,7 +30,6 @@ function hasAllowedExt(name: string): boolean {
 }
 
 declare module 'react' {
-  // webkitdirectory is a non-standard but cross-browser-supported folder picker hint
   interface InputHTMLAttributes<T> {
     webkitdirectory?: string;
     directory?: string;
@@ -63,7 +62,7 @@ export function BatchUploadModal({ kbId, open, onClose, onDone }: Props) {
   }
 
   function handleClose() {
-    if (phase === 'uploading') return; // don't close mid-upload
+    if (phase === 'uploading') return;
     reset();
     onClose();
   }
@@ -73,7 +72,6 @@ export function BatchUploadModal({ kbId, open, onClose, onDone }: Props) {
     const accepted: Item[] = [];
     const ignored: string[] = [];
     for (const file of Array.from(fileList)) {
-      // webkitRelativePath is set by webkitdirectory; fall back to name for plain multi-select
       const relPath = (file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name;
       if (hasAllowedExt(file.name)) {
         accepted.push({ file, relPath, status: 'pending' });
@@ -88,7 +86,6 @@ export function BatchUploadModal({ kbId, open, onClose, onDone }: Props) {
 
   async function startUpload() {
     setPhase('uploading');
-    // Sequential — embedding model is single-instance, parallel just thrashes CPU.
     for (let i = 0; i < items.length; i++) {
       setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, status: 'uploading' } : it)));
       try {
@@ -108,8 +105,8 @@ export function BatchUploadModal({ kbId, open, onClose, onDone }: Props) {
     <Modal open={open} onClose={handleClose} title="批量上传文件夹">
       {phase === 'pick' && (
         <>
-          <p className="mb-4 text-xs text-muted">
-            选择一个文件夹，系统将自动筛选出 <code className="badge bg-bg">.txt .md .pdf .docx</code> 后缀的文件并依次上传。
+          <p className="mb-base text-body-sm text-body">
+            选择一个文件夹，系统将自动筛选出 <code className="badge-mono">.txt .md .pdf .docx</code> 后缀的文件并依次上传。
           </p>
           <button className="btn-primary w-full" onClick={() => inputRef.current?.click()}>
             <FolderUp size={16} /> 选择文件夹
@@ -128,21 +125,21 @@ export function BatchUploadModal({ kbId, open, onClose, onDone }: Props) {
 
       {phase === 'review' && (
         <>
-          <p className="mb-2 text-sm">
-            待上传 <span className="text-accent font-mono">{items.length}</span> 个文件
-            {skipped.length > 0 && <span className="text-muted">，跳过 {skipped.length} 个（格式不符）</span>}
+          <p className="mb-xs text-body-md text-ink">
+            待上传 <span className="font-mono text-ink">{items.length}</span> 个文件
+            {skipped.length > 0 && <span className="text-body">，跳过 {skipped.length} 个（格式不符）</span>}
           </p>
           <FileList items={items} />
           {skipped.length > 0 && (
-            <details className="mt-3 text-xs text-muted">
+            <details className="mt-sm text-caption text-body">
               <summary className="cursor-pointer">查看跳过的 {skipped.length} 个文件</summary>
-              <ul className="mt-2 max-h-32 overflow-auto font-mono">
+              <ul className="mt-xs max-h-32 overflow-auto font-mono">
                 {skipped.map((p) => <li key={p} className="truncate">{p}</li>)}
               </ul>
             </details>
           )}
-          <div className="mt-4 flex justify-end gap-2">
-            <button className="btn-ghost" onClick={reset}>重新选择</button>
+          <div className="mt-base flex justify-end gap-xs">
+            <button className="btn-secondary" onClick={reset}>重新选择</button>
             <button className="btn-primary" disabled={items.length === 0} onClick={startUpload}>开始上传</button>
           </div>
         </>
@@ -150,8 +147,8 @@ export function BatchUploadModal({ kbId, open, onClose, onDone }: Props) {
 
       {phase === 'uploading' && (
         <>
-          <p className="mb-3 text-sm">
-            上传中… <span className="font-mono text-muted">{items.filter(i => i.status !== 'pending' && i.status !== 'uploading').length}/{items.length}</span>
+          <p className="mb-sm text-body-md text-ink">
+            上传中… <span className="font-mono text-body">{items.filter(i => i.status !== 'pending' && i.status !== 'uploading').length}/{items.length}</span>
           </p>
           <FileList items={items} />
         </>
@@ -159,13 +156,13 @@ export function BatchUploadModal({ kbId, open, onClose, onDone }: Props) {
 
       {phase === 'done' && (
         <>
-          <p className="mb-3 text-sm">
-            完成：<span className="text-accent font-mono">{stats.ok}</span> 成功
-            {stats.fail > 0 && <span className="text-danger font-mono">，{stats.fail} 失败</span>}
+          <p className="mb-sm text-body-md text-ink">
+            完成：<span className="font-mono text-success">{stats.ok}</span> 成功
+            {stats.fail > 0 && <span className="font-mono text-error">，{stats.fail} 失败</span>}
           </p>
           <FileList items={items} />
-          <div className="mt-4 flex justify-end gap-2">
-            <button className="btn-ghost" onClick={reset}>再传一批</button>
+          <div className="mt-base flex justify-end gap-xs">
+            <button className="btn-secondary" onClick={reset}>再传一批</button>
             <button className="btn-primary" onClick={() => { reset(); onClose(); pushToast('success', `已上传 ${stats.ok} 个文件`); }}>关闭</button>
           </div>
         </>
@@ -176,13 +173,13 @@ export function BatchUploadModal({ kbId, open, onClose, onDone }: Props) {
 
 function FileList({ items }: { items: Item[] }) {
   return (
-    <ul className="max-h-72 overflow-auto rounded-md border border-border bg-bg">
+    <ul className="max-h-72 overflow-auto rounded-md border border-hairline-strong bg-canvas-soft">
       {items.map((it, i) => (
-        <li key={i} className="flex items-center gap-2 border-b border-border px-3 py-2 text-xs last:border-b-0">
+        <li key={i} className="flex items-center gap-xs border-b border-hairline px-sm py-xs text-caption last:border-b-0">
           <StatusIcon status={it.status} />
-          <span className="flex-1 truncate font-mono" title={it.relPath}>{it.relPath}</span>
-          {it.status === 'success' && <span className="text-muted">{it.chunkCount} chunk</span>}
-          {it.status === 'failed' && <span className="text-danger">{it.error}</span>}
+          <span className="flex-1 truncate font-mono text-ink" title={it.relPath}>{it.relPath}</span>
+          {it.status === 'success' && <span className="text-body">{it.chunkCount} chunk</span>}
+          {it.status === 'failed' && <span className="text-error">{it.error}</span>}
         </li>
       ))}
     </ul>
@@ -190,8 +187,8 @@ function FileList({ items }: { items: Item[] }) {
 }
 
 function StatusIcon({ status }: { status: ItemStatus }) {
-  if (status === 'pending') return <span className="inline-block h-3 w-3 rounded-full bg-border" />;
-  if (status === 'uploading') return <Loader2 size={14} className="animate-spin text-accent" />;
-  if (status === 'success') return <CheckCircle2 size={14} className="text-accent" />;
-  return <XCircle size={14} className="text-danger" />;
+  if (status === 'pending') return <span className="inline-block h-3 w-3 rounded-full bg-hairline-strong" />;
+  if (status === 'uploading') return <Loader2 size={14} className="animate-spin text-ink" />;
+  if (status === 'success') return <CheckCircle2 size={14} className="text-success" />;
+  return <XCircle size={14} className="text-error" />;
 }

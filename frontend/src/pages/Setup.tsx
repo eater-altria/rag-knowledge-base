@@ -35,17 +35,17 @@ export function SetupPage() {
   }
 
   return (
-    <div className="flex min-h-full items-center justify-center p-6">
-      <form onSubmit={submit} className="card w-full max-w-sm">
-        <h1 className="mb-1 text-lg font-semibold">创建管理员账户</h1>
-        <p className="mb-5 text-xs text-muted">这是首次启动引导，账户只会被创建一次。</p>
-        <label className="block text-xs text-muted">用户名</label>
-        <input className="input mt-1 mb-3" value={username} onChange={(e) => setUsername(e.target.value)} autoFocus />
-        <label className="block text-xs text-muted">密码（≥ 8 位）</label>
-        <input type="password" className="input mt-1 mb-3" value={password} onChange={(e) => setPassword(e.target.value)} />
-        <label className="block text-xs text-muted">确认密码</label>
-        <input type="password" className="input mt-1 mb-4" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
-        {err && <p className="mb-3 text-xs text-danger">{err}</p>}
+    <div className="flex min-h-full items-center justify-center bg-hero-sky p-lg">
+      <form onSubmit={submit} className="card w-full max-w-sm shadow-drop">
+        <h1 className="mb-xxs text-display-sm text-ink">创建管理员账户</h1>
+        <p className="mb-lg text-caption text-body">这是首次启动引导，账户只会被创建一次。</p>
+        <label className="label">用户名</label>
+        <input className="input mt-xxs mb-sm" value={username} onChange={(e) => setUsername(e.target.value)} autoFocus />
+        <label className="label">密码（≥ 8 位）</label>
+        <input type="password" className="input mt-xxs mb-sm" value={password} onChange={(e) => setPassword(e.target.value)} />
+        <label className="label">确认密码</label>
+        <input type="password" className="input mt-xxs mb-base" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
+        {err && <p className="mb-sm text-caption text-error">{err}</p>}
         <button className="btn-primary w-full" disabled={busy}>{busy ? '创建中…' : '创建账户'}</button>
       </form>
     </div>

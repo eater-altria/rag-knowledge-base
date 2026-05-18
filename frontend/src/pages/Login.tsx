@@ -29,14 +29,14 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-full items-center justify-center p-6">
-      <form onSubmit={submit} className="card w-full max-w-sm">
-        <h1 className="mb-5 text-lg font-semibold">管理员登录</h1>
-        <label className="block text-xs text-muted">用户名</label>
-        <input className="input mt-1 mb-3" value={username} onChange={(e) => setUsername(e.target.value)} autoFocus />
-        <label className="block text-xs text-muted">密码</label>
-        <input type="password" className="input mt-1 mb-4" value={password} onChange={(e) => setPassword(e.target.value)} />
-        {err && <p className="mb-3 text-xs text-danger">{err}</p>}
+    <div className="flex min-h-full items-center justify-center bg-hero-sky p-lg">
+      <form onSubmit={submit} className="card w-full max-w-sm shadow-drop">
+        <h1 className="mb-lg text-display-sm text-ink">管理员登录</h1>
+        <label className="label">用户名</label>
+        <input className="input mt-xxs mb-sm" value={username} onChange={(e) => setUsername(e.target.value)} autoFocus />
+        <label className="label">密码</label>
+        <input type="password" className="input mt-xxs mb-base" value={password} onChange={(e) => setPassword(e.target.value)} />
+        {err && <p className="mb-sm text-caption text-error">{err}</p>}
         <button className="btn-primary w-full" disabled={busy}>{busy ? '登录中…' : '登录'}</button>
       </form>
     </div>

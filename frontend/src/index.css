@@ -7,34 +7,90 @@
     height: 100%;
   }
   body {
-    @apply bg-bg text-text font-sans antialiased;
+    @apply bg-canvas text-ink font-sans antialiased;
     font-feature-settings: "ss01", "cv11";
   }
   ::selection {
-    background: rgba(217, 119, 87, 0.35);
+    background: rgba(13, 116, 206, 0.18);
   }
+  /* Typography defaults: body runs in `body-md` size, body-strong reserved for ink */
+  p { @apply text-body; }
+  code, kbd, pre, samp { @apply font-mono; }
 }
 
 @layer components {
+  /* === Buttons === */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-2 rounded-md text-button transition
+           focus:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2
+           focus-visible:ring-offset-canvas
+           disabled:opacity-50 disabled:cursor-not-allowed;
+    height: 40px;
+    padding: 0 18px;
   }
+  /* Primary — pure black pill (CTA) */
   .btn-primary {
-    @apply btn bg-accent text-white hover:bg-accentHover;
+    @apply btn bg-primary text-on-primary hover:bg-primary-active active:bg-primary-active;
   }
-  .btn-ghost {
-    @apply btn bg-transparent text-text hover:bg-cardHover;
+  /* Secondary — white card with hairline-strong border */
+  .btn-secondary {
+    @apply btn bg-surface-card text-ink border border-hairline-strong hover:bg-canvas-soft;
+    padding: 0 17px;
   }
+  /* Tertiary — inline text-link (no chrome) */
+  .btn-tertiary {
+    @apply inline-flex items-center gap-2 bg-transparent text-text-link text-button
+           hover:text-text-link-secondary disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  /* Danger — destructive black-on-error CTA. Black is preserved as the brand CTA;
+     error red is reserved for validation text per DESIGN.md, so destructive actions
+     still ride black with a clear destructive label. */
   .btn-danger {
-    @apply btn bg-danger text-white hover:opacity-90;
+    @apply btn bg-primary text-on-primary hover:bg-primary-active;
   }
+
+  /* === Form === */
   .input {
-    @apply w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent;
+    @apply w-full rounded-md border border-hairline-strong bg-surface-card text-ink text-body-md
+           placeholder:text-muted
+           focus:outline-none focus:border-ink focus:ring-0;
+    padding: 12px 16px;
+    min-height: 44px;
+    transition: border-color 150ms, box-shadow 150ms;
   }
+  .input:focus {
+    box-shadow: inset 0 0 0 1px #171717;
+  }
+  .label {
+    @apply block text-caption text-body;
+  }
+
+  /* === Card === */
   .card {
-    @apply rounded-card border border-border bg-card p-5;
+    @apply rounded-lg border border-hairline-strong bg-surface-card p-lg;
   }
-  .badge {
-    @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-mono;
+  .card-dark {
+    @apply rounded-lg bg-surface-dark text-on-dark p-lg;
+  }
+
+  /* === Badges & Pills === */
+  .badge-pill {
+    @apply inline-flex items-center rounded-pill bg-surface-strong text-ink text-caption-uppercase uppercase;
+    padding: 4px 10px;
+  }
+  .badge-mono {
+    @apply inline-flex items-center rounded-sm bg-surface-strong text-ink font-mono text-caption;
+    padding: 2px 8px;
+  }
+
+  /* === Code surface === */
+  .code-block {
+    @apply rounded-lg bg-surface-dark text-on-dark font-mono text-code;
+    padding: 20px;
+  }
+
+  /* === Top-nav helpers === */
+  .nav-link {
+    @apply text-nav-link text-ink hover:text-body transition;
   }
 }

@@ -16,10 +16,10 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
   render() {
     if (!this.state.error) return this.props.children;
     return (
-      <div className="flex min-h-full items-center justify-center p-8">
+      <div className="flex min-h-full items-center justify-center p-xl">
         <div className="card max-w-lg">
-          <h1 className="mb-2 text-lg font-semibold text-danger">出错了</h1>
-          <p className="mb-3 text-sm text-muted">{this.state.error.message}</p>
+          <h1 className="mb-xs text-display-sm text-ink">出错了</h1>
+          <p className="mb-base text-body-sm text-body">{this.state.error.message}</p>
           <button className="btn-primary" onClick={() => location.reload()}>刷新页面</button>
         </div>
       </div>

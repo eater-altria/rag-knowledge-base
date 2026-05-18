@@ -14,44 +14,50 @@ export function KBListPage() {
   const [toDelete, setToDelete] = useState<KnowledgeBase | null>(null);
 
   return (
-    <div className="mx-auto max-w-5xl p-6">
-      <header className="mb-6 flex items-center justify-between">
+    <div className="mx-auto max-w-5xl px-lg pt-xxl pb-section">
+      <header className="mb-xl flex items-end justify-between gap-base">
         <div>
-          <h1 className="text-xl font-semibold">知识库</h1>
-          <p className="text-xs text-muted">每个知识库相互隔离；上传文档后立即可被检索。</p>
+          <h1 className="text-display-lg text-ink">知识库</h1>
+          <p className="mt-xs text-body-md text-body">每个知识库相互隔离；上传文档后立即可被检索。</p>
         </div>
         <button className="btn-primary" onClick={() => setCreateOpen(true)}>
           <Plus size={16} /> 新建知识库
         </button>
       </header>
 
-      {isLoading && <p className="text-sm text-muted">加载中…</p>}
+      {isLoading && <p className="text-body-sm text-body">加载中…</p>}
       {data && data.length === 0 && (
-        <div className="card text-center text-sm text-muted">还没有知识库，点右上角"新建知识库"开始。</div>
+        <div className="card text-center text-body-sm text-body">
+          还没有知识库，点右上角"新建知识库"开始。
+        </div>
       )}
 
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid gap-base md:grid-cols-2">
         {data?.map((kb) => (
-          <div key={kb.id} className="card flex flex-col gap-3">
-            <div className="flex items-start justify-between">
+          <div key={kb.id} className="card flex flex-col gap-sm transition hover:shadow-drop">
+            <div className="flex items-start justify-between gap-sm">
               <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <Database size={16} className="text-accent" />
-                  <h2 className="truncate font-medium">{kb.name}</h2>
+                <div className="flex items-center gap-xs">
+                  <Database size={16} className="text-ink" />
+                  <h2 className="truncate text-title-md text-ink">{kb.name}</h2>
                 </div>
-                {kb.description && <p className="mt-1 text-xs text-muted line-clamp-2">{kb.description}</p>}
+                {kb.description && <p className="mt-xs text-body-sm text-body line-clamp-2">{kb.description}</p>}
               </div>
-              <button className="btn-ghost !px-2 !py-1 text-muted hover:text-danger" onClick={() => setToDelete(kb)} aria-label="删除">
+              <button
+                className="rounded-md p-xs text-muted hover:bg-canvas-soft hover:text-ink"
+                onClick={() => setToDelete(kb)}
+                aria-label="删除"
+              >
                 <Trash2 size={14} />
               </button>
             </div>
-            <div className="flex items-center gap-3 text-xs text-muted">
-              <span className="badge bg-bg">文档 {kb.document_count}</span>
-              <span className="badge bg-bg">chunk {kb.chunk_count}</span>
+            <div className="flex items-center gap-xs">
+              <span className="badge-pill">文档 {kb.document_count}</span>
+              <span className="badge-pill">chunk {kb.chunk_count}</span>
             </div>
-            <div className="flex gap-2">
-              <Link to={`/kb/${kb.id}`} className="btn-ghost flex-1 border border-border">管理文档</Link>
-              <Link to={`/kb/${kb.id}/retrieve`} className="btn-ghost flex-1 border border-border">
+            <div className="flex gap-xs">
+              <Link to={`/kb/${kb.id}`} className="btn-secondary flex-1">管理文档</Link>
+              <Link to={`/kb/${kb.id}/retrieve`} className="btn-secondary flex-1">
                 <Search size={14} /> 召回测试
               </Link>
             </div>
@@ -79,12 +85,12 @@ function CreateModal({ open, onClose, onCreated }: { open: boolean; onClose: () 
   });
   return (
     <Modal open={open} onClose={onClose} title="新建知识库">
-      <label className="block text-xs text-muted">名称</label>
-      <input className="input mt-1 mb-3" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
-      <label className="block text-xs text-muted">描述（可选）</label>
-      <textarea className="input mt-1 mb-4 min-h-[80px]" value={desc} onChange={(e) => setDesc(e.target.value)} />
-      <div className="flex justify-end gap-2">
-        <button className="btn-ghost" onClick={onClose}>取消</button>
+      <label className="label">名称</label>
+      <input className="input mt-xxs mb-sm" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+      <label className="label">描述（可选）</label>
+      <textarea className="input mt-xxs mb-base min-h-[80px]" value={desc} onChange={(e) => setDesc(e.target.value)} />
+      <div className="flex justify-end gap-xs">
+        <button className="btn-secondary" onClick={onClose}>取消</button>
         <button className="btn-primary" disabled={!name.trim() || m.isPending} onClick={() => m.mutate()}>
           {m.isPending ? '创建中…' : '创建'}
         </button>
@@ -107,10 +113,12 @@ function DeleteModal({ kb, onClose, onDone }: { kb: KnowledgeBase | null; onClos
   if (!kb) return null;
   return (
     <Modal open={!!kb} onClose={onClose} title={`删除「${kb.name}」`}>
-      <p className="mb-3 text-sm text-muted">该操作会清除该知识库的全部文档与向量，且不可恢复。请输入知识库名称以确认：</p>
-      <input className="input mb-4" placeholder={kb.name} value={confirm} onChange={(e) => setConfirm(e.target.value)} />
-      <div className="flex justify-end gap-2">
-        <button className="btn-ghost" onClick={onClose}>取消</button>
+      <p className="mb-sm text-body-sm text-body">
+        该操作会清除该知识库的全部文档与向量，且不可恢复。请输入知识库名称以确认：
+      </p>
+      <input className="input mb-base" placeholder={kb.name} value={confirm} onChange={(e) => setConfirm(e.target.value)} />
+      <div className="flex justify-end gap-xs">
+        <button className="btn-secondary" onClick={onClose}>取消</button>
         <button className="btn-danger" disabled={confirm !== kb.name || m.isPending} onClick={() => m.mutate()}>
           {m.isPending ? '删除中…' : '永久删除'}
         </button>

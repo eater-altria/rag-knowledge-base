@@ -19,15 +19,9 @@ export function Modal({ open, onClose, title, children }: Props) {
   }, [open, onClose]);
   if (!open) return null;
   return (
-    <div
-      className="fixed inset-0 z-40 flex items-center justify-center bg-black/60"
-      onClick={onClose}
-    >
-      <div
-        className="card w-full max-w-md"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 className="mb-4 text-base font-semibold">{title}</h2>
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-ink/40 backdrop-blur-sm">
+      <div className="card w-full max-w-md shadow-drop">
+        <h2 className="mb-base text-title-md text-ink">{title}</h2>
         {children}
       </div>
     </div>

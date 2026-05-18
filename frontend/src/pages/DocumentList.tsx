@@ -62,18 +62,18 @@ export function DocumentListPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl p-6">
-      <header className="mb-6 flex items-center justify-between">
-        <Link to="/" className="btn-ghost border border-border"><ArrowLeft size={14} /> 返回</Link>
-        <Link to={`/kb/${kbId}/retrieve`} className="btn-ghost border border-border">
+    <div className="mx-auto max-w-5xl px-lg pt-xl pb-section">
+      <header className="mb-lg flex items-center justify-between">
+        <Link to="/" className="btn-secondary"><ArrowLeft size={14} /> 返回</Link>
+        <Link to={`/kb/${kbId}/retrieve`} className="btn-secondary">
           <Search size={14} /> 召回测试
         </Link>
       </header>
 
       <div
         className={[
-          'card mb-6 flex flex-col items-center justify-center border-dashed text-center transition',
-          dragging ? 'border-accent bg-cardHover' : 'border-border',
+          'mb-lg flex flex-col items-center justify-center rounded-lg border-2 border-dashed bg-canvas-soft px-lg py-xl text-center transition',
+          dragging ? 'border-ink bg-surface-strong' : 'border-hairline-strong',
         ].join(' ')}
         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
         onDragLeave={() => setDragging(false)}
@@ -83,13 +83,13 @@ export function DocumentListPage() {
           handleFile(e.dataTransfer.files?.[0] ?? null);
         }}
       >
-        <Upload className="mb-2 text-accent" size={28} />
-        <p className="text-sm">拖拽文件到此处，或</p>
-        <div className="mt-3 flex gap-2">
+        <Upload className="mb-xs text-ink" size={28} />
+        <p className="text-body-md text-ink">拖拽文件到此处，或</p>
+        <div className="mt-sm flex gap-xs">
           <button className="btn-primary" onClick={() => inputRef.current?.click()} disabled={upload.isPending}>
             {upload.isPending ? '上传中…' : '选择文件'}
           </button>
-          <button className="btn-ghost border border-border" onClick={() => setBatchOpen(true)} disabled={upload.isPending}>
+          <button className="btn-secondary" onClick={() => setBatchOpen(true)} disabled={upload.isPending}>
             <FolderUp size={14} /> 批量上传文件夹
           </button>
         </div>
@@ -100,7 +100,7 @@ export function DocumentListPage() {
           className="hidden"
           onChange={(e) => { handleFile(e.target.files?.[0] ?? null); e.target.value = ''; }}
         />
-        <p className="mt-3 text-xs text-muted">支持 .txt / .md / .pdf / .docx；上传完成后立即向量化。</p>
+        <p className="mt-sm text-caption text-body">支持 .txt / .md / .pdf / .docx；上传完成后立即向量化。</p>
       </div>
 
       <BatchUploadModal
@@ -110,36 +110,53 @@ export function DocumentListPage() {
         onDone={() => qc.invalidateQueries({ queryKey: ['documents', kbId] })}
       />
 
-      <div className="rounded-card border border-border bg-card">
-        <table className="w-full text-sm">
-          <thead className="text-xs text-muted">
+      <div className="overflow-hidden rounded-lg border border-hairline-strong bg-surface-card">
+        <table className="w-full text-body-sm">
+          <thead className="bg-canvas-soft text-caption-uppercase uppercase text-body">
             <tr>
-              <th className="px-4 py-3 text-left">文件名</th>
-              <th className="px-4 py-3 text-left">大小</th>
-              <th className="px-4 py-3 text-left">chunk</th>
-              <th className="px-4 py-3 text-left">上传时间</th>
-              <th className="px-4 py-3"></th>
+              <th className="px-base py-sm text-left font-semibold">文件名</th>
+              <th className="px-base py-sm text-left font-semibold">大小</th>
+              <th className="px-base py-sm text-left font-semibold">chunk</th>
+              <th className="px-base py-sm text-left font-semibold">上传时间</th>
+              <th className="px-base py-sm"></th>
             </tr>
           </thead>
           <tbody>
             {(!data || data.items.length === 0) && (
-              <tr><td colSpan={5} className="px-4 py-10 text-center text-muted">暂无文档</td></tr>
+              <tr><td colSpan={5} className="px-base py-xxl text-center text-body">暂无文档</td></tr>
             )}
             {data?.items.map((d) => (
-              <tr key={d.id} className="border-t border-border">
-                <td className="px-4 py-3"><div className="flex items-center gap-2"><FileText size={14} className="text-muted" /> {d.filename}</div></td>
-                <td className="px-4 py-3 text-muted">{formatSize(d.size_bytes)}</td>
-                <td className="px-4 py-3 font-mono text-xs">{d.chunk_count}</td>
-                <td className="px-4 py-3 text-muted">{new Date(d.created_at).toLocaleString()}</td>
-                <td className="px-4 py-3 text-right">
-                  <div className="flex justify-end gap-1">
-                    <button className="btn-ghost !px-2 !py-1 text-muted hover:text-accent" onClick={() => setPreviewDoc(d)} aria-label="预览">
+              <tr key={d.id} className="border-t border-hairline">
+                <td className="px-base py-sm">
+                  <div className="flex items-center gap-xs text-ink">
+                    <FileText size={14} className="text-muted" /> {d.filename}
+                  </div>
+                </td>
+                <td className="px-base py-sm text-body">{formatSize(d.size_bytes)}</td>
+                <td className="px-base py-sm font-mono text-caption text-ink">{d.chunk_count}</td>
+                <td className="px-base py-sm text-body">{new Date(d.created_at).toLocaleString()}</td>
+                <td className="px-base py-sm text-right">
+                  <div className="flex justify-end gap-xxs">
+                    <button
+                      className="rounded-md p-xs text-muted hover:bg-canvas-soft hover:text-ink"
+                      onClick={() => setPreviewDoc(d)}
+                      aria-label="预览"
+                    >
                       <Eye size={14} />
                     </button>
-                    <button className="btn-ghost !px-2 !py-1 text-muted hover:text-accent" onClick={() => setRenameDoc(d)} aria-label="重命名">
+                    <button
+                      className="rounded-md p-xs text-muted hover:bg-canvas-soft hover:text-ink"
+                      onClick={() => setRenameDoc(d)}
+                      aria-label="重命名"
+                    >
                       <Pencil size={14} />
                     </button>
-                    <button className="btn-ghost !px-2 !py-1 text-muted hover:text-danger" disabled={remove.isPending} onClick={() => remove.mutate(d)} aria-label="删除">
+                    <button
+                      className="rounded-md p-xs text-muted hover:bg-canvas-soft hover:text-ink disabled:opacity-50"
+                      disabled={remove.isPending}
+                      onClick={() => remove.mutate(d)}
+                      aria-label="删除"
+                    >
                       <Trash2 size={14} />
                     </button>
                   </div>
@@ -195,21 +212,21 @@ function DocumentPreviewModal({ kbId, doc, onClose }: { kbId: string; doc: Docum
 
   return (
     <Modal open={!!doc} onClose={onClose} title={doc ? `预览：${doc.filename}` : ''}>
-      <p className="mb-3 text-xs text-muted">以下是切分后用于召回的纯文本，不含原文档的图片、表格、排版。</p>
-      <pre className="mb-3 max-h-[60vh] overflow-auto whitespace-pre-wrap rounded border border-border bg-bg p-3 font-mono text-xs">
+      <p className="mb-sm text-caption text-body">以下是切分后用于召回的纯文本，不含原文档的图片、表格、排版。</p>
+      <pre className="mb-sm max-h-[60vh] overflow-auto whitespace-pre-wrap rounded-lg bg-surface-dark p-base font-mono text-code text-on-dark">
         {state?.text ?? (loading ? '加载中…' : '')}
       </pre>
-      <div className="flex items-center justify-between text-xs text-muted">
+      <div className="flex items-center justify-between text-caption text-body">
         <span>
           {state ? `已加载 ${state.returned_chunks} / 共 ${state.total_chunks} 切片` : ''}
         </span>
-        <div className="flex gap-2">
+        <div className="flex gap-xs">
           {state?.truncated && (
-            <button className="btn-ghost border border-border" onClick={loadMore} disabled={loading}>
+            <button className="btn-secondary" onClick={loadMore} disabled={loading}>
               {loading ? '加载中…' : '加载更多'}
             </button>
           )}
-          <button className="btn-ghost border border-border" onClick={onClose}>关闭</button>
+          <button className="btn-secondary" onClick={onClose}>关闭</button>
         </div>
       </div>
     </Modal>
@@ -246,7 +263,7 @@ function RenameDocumentModal({ kbId, doc, onClose }: { kbId: string; doc: Docume
 
   return (
     <Modal open={!!doc} onClose={onClose} title="重命名文档">
-      <form onSubmit={submit} className="space-y-3">
+      <form onSubmit={submit} className="space-y-sm">
         <input
           autoFocus
           className="input w-full"
@@ -254,8 +271,8 @@ function RenameDocumentModal({ kbId, doc, onClose }: { kbId: string; doc: Docume
           onChange={(e) => setValue(e.target.value)}
           maxLength={255}
         />
-        <div className="flex justify-end gap-2">
-          <button type="button" className="btn-ghost border border-border" onClick={onClose} disabled={rename.isPending}>取消</button>
+        <div className="flex justify-end gap-xs">
+          <button type="button" className="btn-secondary" onClick={onClose} disabled={rename.isPending}>取消</button>
           <button type="submit" className="btn-primary" disabled={rename.isPending || !value.trim() || value.trim() === doc?.filename}>
             {rename.isPending ? '提交中…' : '保存'}
           </button>

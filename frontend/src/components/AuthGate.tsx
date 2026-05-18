@@ -27,7 +27,7 @@ export function AuthGate({ children }: Props) {
   }, []);
 
   if (state.kind === 'loading') {
-    return <div className="flex h-full items-center justify-center text-muted text-sm">loading…</div>;
+    return <div className="flex h-full items-center justify-center text-body text-body-sm">loading…</div>;
   }
   if (state.kind === 'needs-setup') return <Navigate to="/setup" replace />;
   if (state.kind === 'needs-login') return <Navigate to={`/login?from=${encodeURIComponent(location.pathname)}`} replace />;
